@@ -1,0 +1,11 @@
+services:
+  target:
+    build:
+      context: ./lab
+    ports:
+      - "127.0.0.1:8081:8080"
+    tty: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_RAW

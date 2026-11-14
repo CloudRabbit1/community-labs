@@ -1,0 +1,15 @@
+services:
+  docker-rodeo:
+    build: ./lab
+    image: docker-rodeo-lab:latest
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - docker-rodeo-vault:/vault
+    cap_drop:
+      - ALL
+
+volumes:
+  docker-rodeo-vault:
+    name: docker-rodeo-vault

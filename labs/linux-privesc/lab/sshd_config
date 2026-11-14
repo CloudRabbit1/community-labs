@@ -1,0 +1,17 @@
+Port 22
+AddressFamily any
+ListenAddress 0.0.0.0
+
+HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_ed25519_key
+
+PasswordAuthentication yes
+PermitEmptyPasswords no
+PubkeyAuthentication no
+PermitRootLogin no
+
+UsePAM yes
+LogLevel QUIET
+LoginGraceTime 30
+MaxAuthTries 6
+MaxSessions 10

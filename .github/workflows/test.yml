@@ -1,0 +1,48 @@
+name: Lab Tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  # Discover all labs that have a test.sh
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      labs: ${{ steps.find.outputs.labs }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: find
+        run: |
+          labs=$(find . -maxdepth 3 -name "test.sh" | grep -v '^./templates/' | sed 's|/test.sh||' | sed 's|^\./||' | sort | jq -R -s -c 'split("\n")[:-1]')
+          echo "labs=$labs" >> $GITHUB_OUTPUT
+          echo "Found labs: $labs"
+
+  # Test each lab in its own isolated runner
+  test:
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        lab: ${{ fromJson(needs.discover.outputs.labs) }}
+      fail-fast: false   # run all labs even if one fails
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get install -y sshpass
+
+      - name: Build and test ${{ matrix.lab }}
+        run: |
+          cd ${{ matrix.lab }}
+          chmod +x test.sh
+          ./test.sh
+
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          cd ${{ matrix.lab }}
+          docker compose logs 2>/dev/null || true
+          docker compose down 2>/dev/null || true

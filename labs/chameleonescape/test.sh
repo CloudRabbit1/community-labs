@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DC="docker compose"
+command -v docker-compose >/dev/null 2>&1 && ! docker compose version >/dev/null 2>&1 && DC="docker-compose"
+
+LAB="chameleonescape"
+PORT=8080
+
+cleanup() { $DC -p "$LAB" down -v --remove-orphans 2>/dev/null || true; }
+trap cleanup EXIT
+
+echo "[*] Building..."
+$DC -p "$LAB" -f "$(dirname "$0")/docker-compose.yml" up --build -d 2>&1
+
+echo "[*] Waiting..."
+for i in $(seq 1 30); do
+  curl -sf "http://localhost:$PORT/" >/dev/null 2>&1 && break
+  sleep 1
+done
+
+echo "[*] Running exploit..."
+OUT=$(python3 "$(dirname "$0")/exploit/exploit.py" "http://localhost:$PORT" 2>&1)
+echo "$OUT"
+
+if echo "$OUT" | grep -qE 'POC\{[0-9a-f]{32}\}'; then
+  echo "[+] PASS: flag captured"
+else
+  echo "[-] FAIL: flag not found"
+  exit 1
+fi
+
+echo "[+] All tests passed"

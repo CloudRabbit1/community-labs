@@ -1,0 +1,23 @@
+version: '3.8'
+services:
+  mongo:
+    image: mongo:7
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+    restart: "no"
+  app:
+    build: ./lab
+    ports:
+      - "127.0.0.1:8085:8080"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/
+    depends_on:
+      - mongo
+    cap_drop:
+      - ALL
+    restart: "no"

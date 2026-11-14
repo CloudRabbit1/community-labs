@@ -1,0 +1,86 @@
+name: Daily Stats
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch, update, and commit stats via API
+        env:
+          TOKEN: ${{ secrets.CR_PAT }}
+        run: |
+          CLEAN=$(printf '%s' "$TOKEN" | tr -d '[:space:]')
+
+          # Fetch clone traffic (last 14 days)
+          curl -sf \
+            -H "Authorization: token $CLEAN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/CloudRabbit1/community-labs/traffic/clones" \
+            > /tmp/clones.json
+
+          # Count labs (any dir with a docker-compose.yml, excluding templates/.github)
+          LAB_COUNT=$(find labs/ -maxdepth 2 -name "docker-compose.yml" \
+             | wc -l)
+
+          # Merge new days into stats.json
+          python3 - "$LAB_COUNT" << 'EOF'
+          import json, sys
+
+          lab_count = int(sys.argv[1])
+          new = json.load(open('/tmp/clones.json'))
+
+          try:
+              stats = json.load(open('stats.json'))
+          except Exception:
+              stats = {"total_clones": 0, "total_uniques": 0, "total_labs": 0, "seen_dates": []}
+
+          seen = set(stats.get("seen_dates", []))
+          added = 0
+          for day in new.get("clones", []):
+              ts = day["timestamp"]
+              if ts not in seen:
+                  stats["total_clones"] += day["count"]
+                  stats["total_uniques"] += day["uniques"]
+                  seen.add(ts)
+                  added += 1
+
+          stats["total_labs"] = lab_count
+          stats["seen_dates"] = sorted(seen)[-60:]
+          json.dump(stats, open('stats.json', 'w'), indent=2)
+          print(f"added={added} total_clones={stats['total_clones']} total_uniques={stats['total_uniques']} total_labs={lab_count}")
+          EOF
+
+          # Push update via Contents API (no git push needed)
+          SHA=$(curl -sf \
+            -H "Authorization: token $CLEAN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/CloudRabbit1/community-labs/contents/stats.json" \
+            | python3 -c "import json,sys; print(json.load(sys.stdin)['sha'])")
+
+          CONTENT=$(base64 -w0 stats.json)
+
+          curl -sf -X PUT \
+            -H "Authorization: token $CLEAN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/CloudRabbit1/community-labs/contents/stats.json" \
+            -d "{
+              \"message\": \"update stats [skip ci]\",
+              \"content\": \"$CONTENT\",
+              \"sha\": \"$SHA\",
+              \"committer\": {
+                \"name\": \"CloudRabbit1\",
+                \"email\": \"353845777+CloudRabbit1@users.noreply.github.com\"
+              }
+            }" | python3 -c "
+          import json, sys
+          r = json.load(sys.stdin)
+          sha = r.get('commit', {}).get('sha', 'ERROR')
+          print('committed:', sha)
+          "

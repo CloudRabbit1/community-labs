@@ -1,0 +1,24 @@
+services:
+  target:
+    build:
+      context: ./lab
+    ports:
+      - "127.0.0.1:2222:22"   # change port if the lab uses a different service
+    tty: true
+    cap_drop:
+      - ALL
+    cap_add:
+      # Keep only what the lab needs. Common ones:
+      # NET_BIND_SERVICE  - bind to ports below 1024
+      # SETUID / SETGID   - sshd privilege separation
+      # CHOWN             - chown files during setup
+      # DAC_OVERRIDE      - read/write files regardless of permissions
+      # FOWNER            - bypass permission checks as file owner
+      # SYS_CHROOT        - sshd privsep sandbox
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SYS_CHROOT
