@@ -1,0 +1,24 @@
+Port 22
+AddressFamily any
+ListenAddress 0.0.0.0
+
+HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_ed25519_key
+
+# Password auth must be on; that's the attack surface
+PasswordAuthentication yes
+PermitEmptyPasswords no
+
+# No key-based auth for the lab accounts - students must use the password path
+PubkeyAuthentication no
+
+# No root login needed
+PermitRootLogin no
+
+# Keep noise down
+LogLevel QUIET
+
+# Standard timeouts
+LoginGraceTime 30
+MaxAuthTries 6
+MaxSessions 3

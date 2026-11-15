@@ -1,0 +1,8 @@
+services:
+  target:
+    build:
+      context: ./lab
+    ports:
+      - "127.0.0.1:8084:8080"
+    cap_drop:
+      - ALL
